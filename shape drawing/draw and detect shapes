@@ -1,0 +1,168 @@
+import cv2
+import numpy as np
+from IPython.display import Image
+import math
+drawing = False 
+pt1_x , pt1_y = None , None
+erazer=False
+
+def line_drawing(event,x,y,flags,param):
+    global pt1_x,pt1_y,drawing,erazer
+
+    if event==cv2.EVENT_LBUTTONDOWN:
+        drawing=True
+        erazer=False
+        pt1_x,pt1_y=x,y
+
+    elif event==cv2.EVENT_MOUSEMOVE:
+        if drawing==True:
+            cv2.line(img,(pt1_x,pt1_y),(x,y),color=(0,0,0),thickness=2)
+            pt1_x,pt1_y=x,y
+        elif erazer==True:
+            cv2.circle(img, ( x, y), 20, (255, 255, 255), -1,20,0)
+           
+    elif event==cv2.EVENT_LBUTTONUP:
+        drawing=False
+        cv2.line(img,(pt1_x,pt1_y),(x,y),color=(0,0,0),thickness=2)        
+    elif event==cv2.EVENT_RBUTTONDOWN:
+        if(erazer==True):
+            erazer=False
+            
+        else:
+            erazer=True
+
+
+img = np.full((700,1500,3), 255,np.uint8)
+cv2.namedWindow('test draw')
+cv2.setMouseCallback('test draw',line_drawing)
+
+while(1):
+    
+    cv2.imshow('test draw',img)
+    k=cv2.waitKey(1)&0xFF
+    if k==13:
+        cv2.imwrite("val.jpg",img)
+        break
+cv2.destroyAllWindows()
+img=cv2.imread("val.jpg")
+Image(filename="val.jpg")
+
+comp = np.full((700,1500,3), 255,np.uint8)
+imgGry = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+flag=1
+ret , thrash = cv2.threshold(imgGry, 240 , 255, cv2.CHAIN_APPROX_NONE)
+contours , hierarchy = cv2.findContours(thrash, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+try:
+    hierarchy=hierarchy[0]
+except TypeError:
+    
+    flag=0
+    
+image=cv2.imread(filename="err.jpg")    
+
+window_name = 'Image'
+v=0
+def rec(c):    
+    rect = cv2.minAreaRect(c)
+    box = cv2.boxPoints(rect) 
+    box = np.int0(box)
+
+    return box
+
+def changeTotuple(approx):
+    approx=approx[:,0,:]   
+    l=[]
+    for i in approx:
+        l.append(tuple(i))
+    print(l)
+    return l
+def check(val1,val2):
+    t=max(val1,val2)
+    q=min(val1,val2)
+    per=((t-q)*100)/t
+    print("per:",end=" ")
+    print(per)
+    print(t,q)
+    if(per>40):
+        return 0
+    else:
+        return 1
+    
+def cal(l,sides):
+    if(sides==4):        
+        x1,y1=l[0]
+        x2,y2=l[1]
+        x3,y3=l[2]
+        x4,y4=l[3]
+        a= math.sqrt(pow(x2-x1,2) + pow(y2-y1,2))
+        b= math.sqrt(pow(x3-x2,2) + pow(y3-y2,2))
+        c= math.sqrt(pow(x4-x3,2) + pow(y4-y3,2))
+        d= math.sqrt(pow(x1-x4,2) + pow(y1-y4,2))
+        m=check(a,c)
+        n=check(b,d)
+        if(m==1 and n==1):
+            return 1
+        else:
+            return 0
+if(flag):
+    image = np.full((700,1500,3), 255,np.uint8)
+    for i in range(len(contours)): 
+        c=contours[i]
+        
+        peri = cv2.arcLength(c,True)
+    
+#         print(cv2.contourArea(c) > peri)
+        hei=hierarchy[i]
+        hull=cv2.convexHull(c, False)
+        area = cv2.contourArea(hull)
+        perimeter = cv2.arcLength(hull,True)
+        try:
+            circularity = (4 *(np.pi) * area) / (perimeter * perimeter)
+        except ZeroDivisionError:
+            circularity=0
+        #print(circularity)  
+        #print(hei)
+        approx = cv2.approxPolyDP(c,(1.10*peri)/100,True)
+        app = cv2.approxPolyDP(c,0.02*peri,True)  
+        if (hei[2]>0 or (hei[2]==-1 and len(app)==2)):           
+            if((len(approx)==4 or len(approx)==5) and len(app)==4 and cal(changeTotuple(app),4)==1):
+                box= rec(approx) 
+                image=cv2.drawContours(image,[box],0,(0,0,255),2)
+                cv2.namedWindow(window_name)
+                #print("rect")
+            elif(len(app)==3):
+                image=cv2.polylines(image,np.array([changeTotuple(app)]),True,(91, 8, 255),2)
+                #print("tri")
+            elif(len(approx)==5):
+                image=cv2.polylines(image,np.array([changeTotuple(approx)]),True,(0,255,0),2)
+                print("pent")
+            elif(hei[2]>0 and circularity>9.6 or ((len(approx)>=8 and len(approx)<=12) and circularity>0.9)):
+                M = cv2.moments(approx)        
+                x = int(M['m10']/M['m00'])
+                y = int(M['m01']/M['m00'])
+                image = cv2.circle(image,(x,y),int(peri/(2*(np.pi))),(255,0,0),2)
+                #print(len(approx))
+                #print("circle")  
+            elif(hei[2]==-1 and len(app)==2):
+                image=cv2.polylines(image,np.array([changeTotuple(app)]),True,(255,0,255),2)
+            
+            
+            else:     
+                image=cv2.imread(filename="err.jpg")
+                break     
+
+    
+   
+            
+
+    
+while(1):
+    
+    cv2.imshow(window_name, image) 
+    k=cv2.waitKey(1)&0xFF
+    
+    if k==13:
+        break
+cv2.destroyAllWindows()
+
+
