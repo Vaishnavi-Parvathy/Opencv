@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from IPython.display import Image
 import math
 drawing = False 
 pt1_x , pt1_y = None , None
